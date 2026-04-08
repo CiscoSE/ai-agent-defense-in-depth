@@ -1,0 +1,24 @@
+[Unit]
+Description=AetherClaude Agent Run
+After=network-online.target nftables.service tinyproxy.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=<AGENT_USER>
+Group=<AGENT_USER>
+WorkingDirectory=<AGENT_HOME>/workspace/AetherSDR
+Environment=PYTHONIOENCODING=utf-8
+ExecStart=<AGENT_HOME>/bin/run-agent.sh
+TimeoutStartSec=1800
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=<AGENT_HOME>/workspace <AGENT_HOME>/logs <AGENT_HOME>/.defenseclaw <AGENT_HOME>/.claude <AGENT_HOME>/.config <AGENT_HOME>/prompts <AGENT_HOME>/state /tmp <AGENT_HOME>/skills
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes

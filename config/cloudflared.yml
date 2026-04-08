@@ -1,0 +1,10 @@
+# Cloudflare Tunnel configuration
+# Create your tunnel: cloudflared tunnel create agent-dashboard
+# Route DNS: cloudflared tunnel route dns <TUNNEL-UUID> <YOUR-DOMAIN>
+tunnel: <YOUR-TUNNEL-UUID>
+credentials-file: /home/<YOUR-USER>/.cloudflared/<YOUR-TUNNEL-UUID>.json
+
+ingress:
+  - hostname: <YOUR-DASHBOARD-DOMAIN>
+    service: http://localhost:8080
+  - service: http_status:404

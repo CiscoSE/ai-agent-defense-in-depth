@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "aetherclaude-github": {
+      "command": "/usr/bin/node",
+      "args": [
+        "<AGENT_HOME>/bin/github-mcp-server.js"
+      ],
+      "env": {
+        "HTTPS_PROXY": "http://127.0.0.1:8888"
+      }
+    }
+  }
+}
