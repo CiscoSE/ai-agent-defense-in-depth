@@ -98,7 +98,7 @@ sanitize_input() {
 run_claude() {
     local prompt="$1" logfile="$2"
     env \
-        -u GH_TOKEN -u GITHUB_TOKEN -u GH_APP_TOKEN -u GITHUB_APP_ID \
+        -u GH_TOKEN -u GITHUB_TOKEN -u GH_APP_TOKEN -u GITHUB_APP_ID -u WEBHOOK_SECRET \
         HOME="$HOME" PATH="$PATH" \
         HTTPS_PROXY="$HTTPS_PROXY" HTTP_PROXY="$HTTP_PROXY" NO_PROXY="$NO_PROXY" \
         claude -p "$prompt" \
