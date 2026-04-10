@@ -22,7 +22,9 @@ SESSION_DIR = os.environ.get('AGENT_HOME', '/home/aetherclaude') + '/.claude/pro
 MCP_SCAN_FILE = os.environ.get('AGENT_HOME', '/home/aetherclaude') + '/logs/mcp-scan-latest.json'
 SKILL_SCAN_FILE = os.environ.get('AGENT_HOME', '/home/aetherclaude') + '/logs/skill-scan-latest.json'
 NOISE_BINARIES = {'/usr/bin/python3', '/usr/local/bin/tetragon-dashboard.py'}
-WEBHOOK_SECRET = os.environ.get('WEBHOOK_SECRET', 'change-me-generate-with-python3-secrets-token_hex-32')
+WEBHOOK_SECRET = os.environ.get('WEBHOOK_SECRET', '')
+if not WEBHOOK_SECRET or WEBHOOK_SECRET.startswith('change-me'):
+    print("WARNING: WEBHOOK_SECRET not configured — webhook endpoint disabled. Set via environment variable.")
 WEBHOOK_EVENTS = {'issues', 'issue_comment', 'pull_request', 'pull_request_review', 'discussion', 'discussion_comment'}
 _last_webhook_trigger = 0
 
@@ -56,6 +58,8 @@ _SECRET_PATTERNS = [
     (_re.compile(WEBHOOK_SECRET), '***'),
     # JWTs (eyJ...)
     (_re.compile(r'(eyJ[A-Za-z0-9_\-]{20,}\.[A-Za-z0-9_\-]{20,}\.[A-Za-z0-9_\-]{20,})'), '***'),
+    # PEM private key content
+    (_re.compile(r'-----BEGIN[A-Z ]*PRIVATE KEY-----'), '***PEM***'),
     # Generic long hex/base64 that look like secrets (40+ chars of hex)
     (_re.compile(r'(?:secret|key|password|passwd)=([A-Za-z0-9+/=]{20,})', _re.IGNORECASE), r'***'),
 ]
@@ -2003,13 +2007,15 @@ a{{color:#0a6aba}}
                 d={'events': list(events)[-1000:],
                         'source_counts': {s: len(q) for s, q in events_by_source.items()},
                         'source_buffers': {s: list(q) for s, q in events_by_source.items()},'stats':{'total_events':stats['total_events'],'exec_count':stats['exec_count'],'kprobe_count':stats['kprobe_count'],'exit_count':stats['exit_count'],'aetherclaude_events':stats['aetherclaude_events'],'network_connections':stats['network_connections'],'alert_count':len(stats['alerts']),'policy_hits':dict(stats['policy_hits']),'binaries_seen':dict(stats['binaries_seen']),'alerts':list(stats['alerts']),'suppressed':stats['suppressed'],'tokens':{'input':token_stats['input'],'output':token_stats['output'],'cache_read':token_stats['cache_read'],'cache_create':token_stats['cache_create'],'messages':token_stats['messages'],'total':token_stats['input']+token_stats['output'],'estimated_cost_usd':round(token_stats['input']/1e6*15+token_stats['output']/1e6*75,2)},'tools':{'total':tool_stats['total'],'breakdown':tool_stats['breakdown']}},'mcp_scan_details':ring_stats.get('r6_mcp_details',[]),'rings':dict(ring_stats)}
-            self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Access-Control-Allow-Origin','*');self.end_headers()
+            self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Access-Control-Allow-Origin','self');self.end_headers()
             self._send_json(d)
         else:self.send_response(404);self.end_headers()
     def do_POST(self):
         if self.path == '/webhook':
             import hmac, hashlib
             global _last_webhook_trigger
+            if not WEBHOOK_SECRET:
+                self.send_response(503); self.end_headers(); self.wfile.write(b'Webhook not configured'); return
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length)
             # Validate signature
@@ -2082,7 +2088,7 @@ a{{color:#0a6aba}}
     def log_message(self,*a):pass
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--port',type=int,default=8080);p.add_argument('--log',default='/var/log/tetragon/tetragon.log');a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('--port',type=int,default=8080);p.add_argument('--bind',default='127.0.0.1',help='Bind address (default 127.0.0.1, use 0.0.0.0 for all interfaces)');p.add_argument('--log',default='/var/log/tetragon/tetragon.log');a=p.parse_args()
     threading.Thread(target=tail_nftables_log,daemon=True).start()
     threading.Thread(target=tail_sessions,daemon=True).start()
     threading.Thread(target=tail_orchestrator_skills,args=(ORCHESTRATOR_LOG,),daemon=True).start()
@@ -2091,7 +2097,8 @@ def main():
         threading.Thread(target=fn,args=(target,),daemon=True).start()
     threading.Thread(target=scan_tokens,daemon=True).start()
     threading.Thread(target=scan_rings,daemon=True).start()
-    s=HTTPServer(('0.0.0.0',a.port),H);print(f"Dashboard at http://0.0.0.0:{a.port}")
+    bind=a.bind if hasattr(a,'bind') else '127.0.0.1'
+    s=HTTPServer((bind,a.port),H);print(f"Dashboard at http://{bind}:{a.port}")
     try:s.serve_forever()
     except KeyboardInterrupt:print("\nShutdown")
 

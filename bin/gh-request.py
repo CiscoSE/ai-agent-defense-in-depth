@@ -27,7 +27,14 @@ try:
     result = resp.read().decode("utf-8", errors="replace")
     print(result)
     try:
-        audit = json.dumps({"timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(), "operation": f"{method} {endpoint}", "args": [], "result": result[:200]})
+        import re as _re
+        safe_result = result[:200]
+        for pat, repl in [(r'ghp_[A-Za-z0-9]{36}', 'ghp_***'), (r'ghs_[A-Za-z0-9]{36}', 'ghs_***'),
+                          (r'github_pat_[A-Za-z0-9_]{20,}', 'github_pat_***'),
+                          (r'eyJ[A-Za-z0-9_\-]{20,}\.[A-Za-z0-9_\-]{20,}\.[A-Za-z0-9_\-]{20,}', '***jwt***'),
+                          (r'sk-ant-[A-Za-z0-9_\-]{20,}', 'sk-ant-***')]:
+            safe_result = _re.sub(pat, repl, safe_result)
+        audit = json.dumps({"timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(), "operation": f"{method} {endpoint}", "args": [], "result": safe_result})
         with open("' + os.environ.get('AGENT_HOME', '/home/aetherclaude') + '/logs/mcp-audit.log", "a") as f:
             f.write(audit + "\n")
     except: pass
